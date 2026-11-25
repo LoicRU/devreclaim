@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -31,6 +32,65 @@ const (
 // allowedCommands are the only programs clean will run.
 var allowedCommands = map[string]bool{
 	"npm": true, "pnpm": true, "yarn": true, "pip": true, "uv": true, "dotnet": true, "go": true,
+}
+
+var (
+	snapNameRe     = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+	snapRevisionRe = regexp.MustCompile(`^--revision=[0-9]+$`)
+)
+
+// validateCommand accepts a command only when it is one devreclaim itself
+// would build: an allowed tool, or the same inside a WSL distro through
+// `wsl.exe -d <distro> [-u root] --`. As root, only `snap remove` is accepted.
+func validateCommand(cmd []string) error {
+	bad := fmt.Errorf("refused: command %q is not allowed", strings.Join(cmd, " "))
+
+	if len(cmd) == 0 {
+		return bad
+	}
+
+	if cmd[0] != "wsl.exe" {
+		if !allowedCommands[cmd[0]] {
+			return bad
+		}
+
+		return nil
+	}
+
+	if len(cmd) < 6 || cmd[1] != "-d" || cmd[2] == "" || strings.HasPrefix(cmd[2], "-") {
+		return bad
+	}
+
+	i, root := 3, false
+
+	if cmd[i] == "-u" {
+		if cmd[i+1] != "root" {
+			return bad
+		}
+
+		i, root = i+2, true
+	}
+
+	if i >= len(cmd) || cmd[i] != "--" || i+1 >= len(cmd) {
+		return bad
+	}
+
+	inner := cmd[i+1:]
+
+	if root {
+		if len(inner) == 4 && inner[0] == "snap" && inner[1] == "remove" &&
+			snapNameRe.MatchString(inner[2]) && snapRevisionRe.MatchString(inner[3]) {
+			return nil
+		}
+
+		return bad
+	}
+
+	if !allowedCommands[inner[0]] {
+		return bad
+	}
+
+	return nil
 }
 
 // Result is the outcome for one item of the plan.
@@ -145,8 +205,8 @@ func (e *Executor) deleteDir(c core.Candidate) error {
 
 func (e *Executor) runCommand(ctx context.Context, c core.Candidate) error {
 	cmd := c.Action.Command
-	if len(cmd) == 0 || !allowedCommands[cmd[0]] {
-		return fmt.Errorf("refused: command %q is not allowed", strings.Join(cmd, " "))
+	if err := validateCommand(cmd); err != nil {
+		return err
 	}
 
 	if e.Runner == nil {

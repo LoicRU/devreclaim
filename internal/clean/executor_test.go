@@ -322,3 +322,55 @@ func TestJournalFailureStopsTheRun(t *testing.T) {
 		t.Fatalf("the run must stop after the first unlogged item: %v / %d", err, len(res))
 	}
 }
+
+func TestWSLCommandsAreValidatedStrictly(t *testing.T) {
+	ok := [][]string{
+		{"npm", "cache", "clean", "--force"},
+		{"wsl.exe", "-d", "Ubuntu", "--", "npm", "cache", "clean", "--force"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "root", "--", "snap", "remove", "snapd", "--revision=27738"},
+	}
+
+	for _, cmd := range ok {
+		if err := validateCommand(cmd); err != nil {
+			t.Fatalf("%v must be accepted: %v", cmd, err)
+		}
+	}
+
+	bad := [][]string{
+		nil,
+		{"wsl.exe", "-d", "Ubuntu", "--", "rm", "-rf", "/"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "root", "--", "rm", "-rf", "/"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "root", "--", "npm", "cache", "clean"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "root", "--", "snap", "remove", "snapd"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "root", "--", "snap", "remove", "../x", "--revision=1"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "root", "--", "snap", "remove", "x", "--revision=1;rm"},
+		{"wsl.exe", "-d", "Ubuntu", "-u", "bob", "--", "npm", "cache", "clean"},
+		{"wsl.exe", "-d", "Ubuntu", "--", "snap", "remove", "x", "--revision=1"},
+		{"wsl.exe", "-d", "-x", "--", "npm", "cache", "clean"},
+		{"wsl.exe", "--shutdown"},
+		{"wsl.exe", "-d", "Ubuntu", "npm", "cache", "clean", "x"},
+	}
+
+	for _, cmd := range bad {
+		if err := validateCommand(cmd); err == nil {
+			t.Fatalf("%v must be refused", cmd)
+		}
+	}
+}
+
+func TestExecutorRunsWSLCommandsThroughTheRunner(t *testing.T) {
+	runner := &fakeRunner{}
+	ex := &Executor{Runner: runner}
+
+	c := cand("Ubuntu: npm", 10)
+	c.Action = core.ActionSpec{Type: "run-command", Command: []string{"wsl.exe", "-d", "Ubuntu", "--", "npm", "cache", "clean", "--force"}}
+
+	rm := cand("Ubuntu: evil", 10)
+	rm.Action = core.ActionSpec{Type: "run-command", Command: []string{"wsl.exe", "-d", "Ubuntu", "--", "rm", "-rf", "/"}}
+
+	res, _ := ex.Run(context.Background(), []core.Candidate{c, rm})
+
+	if res[0].Status != StatusDone || res[1].Status != StatusFailed || len(runner.ran) != 1 {
+		t.Fatalf("unexpected results %+v / %v", res, runner.ran)
+	}
+}
