@@ -448,3 +448,44 @@ func TestScannerMetadata(t *testing.T) {
 		t.Fatalf("unexpected scanner: %+v", s)
 	}
 }
+
+func TestRevalidateDetectsMarkerRemovedAfterScan(t *testing.T) {
+	dir := t.TempDir()
+	proj := filepath.Join(dir, "web")
+
+	for _, f := range []string{"package.json", "package-lock.json"} {
+		if err := os.MkdirAll(proj, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.WriteFile(filepath.Join(proj, f), []byte("{}"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Join(proj, "node_modules"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	c := core.Candidate{Path: filepath.Join(proj, "node_modules"), Kind: "node_modules"}
+
+	if err := Revalidate(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := os.Remove(filepath.Join(proj, "package-lock.json")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Revalidate(c); err == nil {
+		t.Fatal("expected an error once the lockfile is gone")
+	}
+
+	if err := os.Remove(filepath.Join(proj, "package.json")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Revalidate(c); err == nil {
+		t.Fatal("expected an error once package.json is gone")
+	}
+}
