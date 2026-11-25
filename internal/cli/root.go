@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"context"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/LoicRU/devreclaim/internal/platform/exec"
+	"github.com/LoicRU/devreclaim/internal/scanners/wsl"
 )
 
 // NewRootCmd builds the devreclaim root command and wires up subcommands.
@@ -23,7 +27,17 @@ func NewRootCmd() *cobra.Command {
 		logDir:   defaultLogDir,
 		now:      time.Now,
 	}))
-	root.AddCommand(newWSLCmd(wslScanner))
+
+	wslCmd := newWSLCmd(wslScanner)
+	wslCmd.AddCommand(newWSLCompactCmd(wslCompactDeps{
+		distros: func(ctx context.Context) ([]wsl.Distro, error) {
+			return wsl.ListDistros(ctx, exec.OSRunner{})
+		},
+		compactor: realCompactor,
+		logDir:    defaultLogDir,
+		now:       time.Now,
+	}))
+	root.AddCommand(wslCmd)
 
 	return root
 }
