@@ -17,8 +17,19 @@ import (
 type Scanner struct {
 	Runner exec.CommandRunner
 	Env    Env
-	// Stat reports whether path is an existing folder.
+	// IsDir reports whether path is an existing folder.
 	IsDir func(path string) bool
+	// DirSize measures a folder (default: walk it on this machine).
+	DirSize func(ctx context.Context, dir string) int64
+	// Linux makes the scanner look for Linux default folders (inside WSL).
+	Linux bool
+	// Prefix is put before each label, e.g. "Ubuntu: ".
+	Prefix string
+	// WrapCommand rewrites the cleaning commands (to run them inside a distro).
+	WrapCommand func(cmd []string) []string
+	// CommandOnly never offers to delete a folder: only the tool's own
+	// cleaning command is allowed.
+	CommandOnly bool
 }
 
 // New returns a Scanner that uses the real machine.
@@ -89,6 +100,14 @@ func (s *Scanner) locate(ctx context.Context, sp spec) (dir string, fromTool boo
 		}
 	}
 
+	if s.Linux {
+		if sp.linux == nil {
+			return "", false
+		}
+
+		return sp.linux(s.Env), false
+	}
+
 	return sp.fallback(s.Env), false
 }
 
@@ -110,17 +129,22 @@ func (s *Scanner) inspect(ctx context.Context, sp spec, minSize int64) (core.Can
 		return core.Candidate{}, false
 	}
 
-	size := fsutil.DirSize(ctx, dir)
+	measure := s.DirSize
+	if measure == nil {
+		measure = fsutil.DirSize
+	}
+
+	size := measure(ctx, dir)
 	if size == 0 || size < minSize || ctx.Err() != nil {
 		return core.Candidate{}, false
 	}
 
 	c := core.Candidate{
-		ID:          core.NewID(core.CategoryPackageCaches, sp.name),
+		ID:          core.NewID(core.CategoryPackageCaches, s.Prefix+sp.name),
 		Category:    core.CategoryPackageCaches,
 		Kind:        "package-cache",
 		Path:        dir,
-		Label:       sp.name,
+		Label:       s.Prefix + sp.name,
 		SizeBytes:   size,
 		Regenerable: true,
 		RegenHint:   sp.hint,
@@ -129,8 +153,16 @@ func (s *Scanner) inspect(ctx context.Context, sp spec, minSize int64) (core.Can
 		Action:      core.ActionSpec{Type: "delete-dir"},
 	}
 
-	if fromTool && len(sp.clean) > 0 {
-		c.Action = core.ActionSpec{Type: "run-command", Command: sp.clean}
+	switch {
+	case fromTool && len(sp.clean) > 0:
+		cmd := sp.clean
+		if s.WrapCommand != nil {
+			cmd = s.WrapCommand(cmd)
+		}
+
+		c.Action = core.ActionSpec{Type: "run-command", Command: cmd}
+	case s.CommandOnly:
+		c.Action = core.ActionSpec{}
 	}
 
 	if !fromTool && len(sp.locate) > 0 {

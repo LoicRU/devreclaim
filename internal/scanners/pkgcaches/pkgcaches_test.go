@@ -202,3 +202,55 @@ func TestMetadata(t *testing.T) {
 		t.Fatal("wrong metadata")
 	}
 }
+
+func TestLinuxModeUsesHomeFoldersPrefixAndInjectedMeasure(t *testing.T) {
+	s := &Scanner{
+		Runner: fakeRunner{},
+		Env:    func(k string) string { return map[string]string{"HOME": "/home/me"}[k] },
+		IsDir:  func(p string) bool { return p == "/home/me/.npm" || p == "/home/me/.cargo/registry" },
+		DirSize: func(_ context.Context, dir string) int64 {
+			if dir == "/home/me/.npm" {
+				return 5000
+			}
+
+			return 300
+		},
+		Linux: true, Prefix: "Ubuntu: ", CommandOnly: true,
+	}
+
+	got := scan(t, s, 0)
+
+	npm, ok := got["Ubuntu: npm"]
+	if !ok || npm.SizeBytes != 5000 || npm.Path != "/home/me/.npm" {
+		t.Fatalf("unexpected npm candidate: %+v", got)
+	}
+
+	if npm.Action.Type != "" {
+		t.Fatalf("with CommandOnly a default folder must not get a delete action: %+v", npm.Action)
+	}
+
+	if _, ok = got["Ubuntu: cargo registry"]; !ok {
+		t.Fatalf("cargo registry not found: %v", got)
+	}
+
+	if _, ok = got["Ubuntu: Windows only"]; ok {
+		t.Fatal("unexpected entry")
+	}
+}
+
+func TestWrapCommandRewritesTheCleaningCommand(t *testing.T) {
+	s := &Scanner{
+		Runner:  fakeRunner{answers: map[string]string{"npm config get cache": "/home/me/.npm\n"}},
+		Env:     func(string) string { return "" },
+		IsDir:   func(string) bool { return true },
+		DirSize: func(context.Context, string) int64 { return 100 },
+		Linux:   true, CommandOnly: true,
+		WrapCommand: func(c []string) []string { return append([]string{"wsl.exe", "-d", "U", "--"}, c...) },
+	}
+
+	npm := scan(t, s, 0)["npm"]
+
+	if npm.Action.Type != "run-command" || strings.Join(npm.Action.Command, " ") != "wsl.exe -d U -- npm cache clean --force" {
+		t.Fatalf("unexpected action: %+v", npm.Action)
+	}
+}
