@@ -1,7 +1,7 @@
-# Reclaim — Dossier de développement complet
+# devreclaim — Dossier de développement complet
 
 > Nettoyeur de disque open source pour développeurs, pensé d'abord pour **Windows + WSL2 + Docker Desktop**.
-> Nom **provisoire** : à vérifier (GitHub, winget, scoop, npm, crates) avant toute publication.
+> Nom : `devreclaim` (libre sur GitHub et winget au 2026-11-25 ; scoop et domaine restent à vérifier).
 > Auteur : Loïc (LoicRU) — projet solo, coût cible 0 €.
 >
 > **Révision 2** (2026-10-19) — intègre une relecture critique : planning réaliste, point de
@@ -16,7 +16,7 @@ Légende des preuves : **[F]** fait lu sur une page · **[O]** observation · **
 ## 0. TL;DR
 
 - **Problème** : le disque C: se remplit chez les devs Windows (node_modules, caches de paquets, images WSL2/Docker qui grossissent mais ne rétrécissent pas) et personne n'a d'outil open source qui voit *tout* et nettoie *sans danger*.
-- **Solution** : un binaire unique `reclaim.exe` (CLI + TUI) qui scanne en lecture seule, explique ce qui prend la place, estime ce qui est *réellement récupérable*, puis nettoie avec garde-fous.
+- **Solution** : un binaire unique `devreclaim.exe` (CLI + TUI) qui scanne en lecture seule, explique ce qui prend la place, estime ce qui est *réellement récupérable*, puis nettoie avec garde-fous.
 - **Différenciateur** : un rapport unique Windows + WSL + Docker + caches + artefacts de projets, avec estimation du gain réel (pas la taille brute).
 - **MVP** : **[RÉVISÉ]** 8–12 semaines réalistes (pas 4), avec un point de validation après le scanner WSL avant d'investir dans le reste. Premier livrable concret : le **scanner WSL en lecture seule** (taille du `.vhdx` vs espace réellement utilisé dans la distro).
 
@@ -34,7 +34,7 @@ Légende des preuves : **[F]** fait lu sur une page · **[O]** observation · **
 | `ext4.vhdx` de WSL2 grossit mais ne rétrécit pas ; le mode sparse est signalé comme instable | [F] | https://github.com/microsoft/WSL/issues/12103 |
 | Sparse VHD : bloqué pour risque de corruption, réactivé en *expérimental* dans WSL 3.0.2 pré-release (6 oct. 2026) | [F] | https://xenospectrum.com/en/wsl302-vnuma-sparse-vhd-scope/ |
 | `Optimize-VHD` exige Hyper-V (absent de Windows Famille) ; conseils erronés (`wslcompact`) circulent | [F] | https://learn.microsoft.com/en-us/answers/questions/4006845/reduce-disk-space-consumption-for-wsl |
-| Docker Desktop : VHDX grossit à chaque mise à jour, pas de moyen simple de récupérer | [F] | https://forums.docker.com/t/docker-desktop-wsl2-vhdx-grows-by-1-5gb-after-every-update-no-way-to-reclaim-space/151729 |
+| Docker Desktop : VHDX grossit à chaque mise à jour, pas de moyen simple de récupérer | [F] | https://forums.docker.com/t/docker-desktop-wsl2-vhdx-grows-by-1-5gb-after-every-update-no-way-to-devreclaim-space/151729 |
 | Script PowerShell de compaction WSL : 112★, `.exe` non signé (faux positifs AV possibles), compaction seule | [F] | https://github.com/hyperphantasia/WSL-VHDX-Compact |
 | Un outil complet mais invisible peut avoir 0★ (ex. `romnn/cooldown`, autre niche) → la découvrabilité est le vrai goulot | [O] | rapport précédent |
 
@@ -49,7 +49,7 @@ Légende des preuves : **[F]** fait lu sur une page · **[O]** observation · **
 ## 2. Vision, public, promesse
 
 - **Public** : développeurs sous Windows (WSL2, Docker Desktop), étudiants (Epitech, etc.), DevOps sur portable.
-- **Promesse** (une phrase pour le README) : *« See exactly what's eating your dev disk on Windows — projects, caches, WSL, Docker — and reclaim it safely. »*
+- **Promesse** (une phrase pour le README) : *« See exactly what's eating your dev disk on Windows — projects, caches, WSL, Docker — and devreclaim it safely. »*
 - **Principes non négociables**
   1. **Lecture seule par défaut.** Rien n'est supprimé sans `--apply` explicite.
   2. **Honnêteté des chiffres** : on distingue *taille brute*, *espace réellement récupérable* (hardlinks, vhdx) et *estimation*.
@@ -68,12 +68,12 @@ Légende des preuves : **[F]** fait lu sur une page · **[O]** observation · **
 - Caches globaux : npm, pnpm, yarn, pip, uv, cargo registry, NuGet, Gradle, Maven, Go.
 - WSL2 : liste des distros, taille du `.vhdx`, espace utilisé dans la distro, gain récupérable estimé.
 - `clean` : dry-run par défaut, `--apply` pour exécuter, confirmation interactive, sortie JSON.
-- Compaction WSL guidée (`reclaim wsl compact`) avec repli `diskpart` si Hyper-V absent.
+- Compaction WSL guidée (`devreclaim wsl compact`) avec repli `diskpart` si Hyper-V absent.
 - Installation : release GitHub (`.exe` + SHA256) ; winget/scoop juste après.
 
 ### 3.1bis **[RÉVISÉ] Point de validation avant d'aller plus loin**
 Avant d'investir dans 3.1 au complet (M2–M7), livrer et diffuser le scanner WSL seul
-(`reclaim wsl status`, lecture seule, pas de suppression) comme mini-outil ou article
+(`devreclaim wsl status`, lecture seule, pas de suppression) comme mini-outil ou article
 autonome. Objectif : obtenir un signal de personnes extérieures (quelqu'un d'autre que
 l'auteur l'utilise, commente, ou dit « ça m'a aidé ») avant de construire le scanner
 d'artefacts, les caches, l'executor de suppression, le TUI et le pipeline de release
@@ -84,7 +84,7 @@ complet. Voir le jalon **M1.5** en §12.
 - Cache Visual Studio / JetBrains / VS Code.
 - Planification (tâche Windows mensuelle).
 - Export HTML/Markdown du rapport (partage du « avant/après »).
-- Profils par écosystème, liste blanche/noire utilisateur (`reclaim.toml`).
+- Profils par écosystème, liste blanche/noire utilisateur (`devreclaim.toml`).
 - Support Linux/macOS (très bas dans la priorité).
 
 ### 3.3 À ne PAS faire au départ
@@ -97,14 +97,14 @@ complet. Voir le jalon **M1.5** en §12.
 ### 4.1 CLI
 
 ```
-reclaim scan   [--root <path>...] [--category <c>...] [--min-size 100MB] [--json] [--no-wsl] [--no-docker]
-reclaim clean  [--category <c>...] [--older-than 30d] [--apply] [--yes] [--trash|--delete] [--json]
-reclaim wsl status
-reclaim wsl compact [--distro <name>|--all] [--method auto|optimize-vhd|diskpart] [--apply]
-reclaim docker status            # v0.2
-reclaim explain <candidate-id>   # pourquoi c'est proposé, risque, commande équivalente
-reclaim config [init|show|path]
-reclaim version
+devreclaim scan   [--root <path>...] [--category <c>...] [--min-size 100MB] [--json] [--no-wsl] [--no-docker]
+devreclaim clean  [--category <c>...] [--older-than 30d] [--apply] [--yes] [--trash|--delete] [--json]
+devreclaim wsl status
+devreclaim wsl compact [--distro <name>|--all] [--method auto|optimize-vhd|diskpart] [--apply]
+devreclaim docker status            # v0.2
+devreclaim explain <candidate-id>   # pourquoi c'est proposé, risque, commande équivalente
+devreclaim config [init|show|path]
+devreclaim version
 ```
 
 Catégories (`--category`) : `project-artifacts`, `package-caches`, `wsl`, `docker`, `ide-caches`, `windows-temp`.
@@ -149,7 +149,7 @@ type ActionSpec struct {
 ```json
 {
   "schemaVersion": 1,
-  "tool": "reclaim",
+  "tool": "devreclaim",
   "version": "0.1.0",
   "generatedAt": "2026-10-20T10:00:00Z",
   "summary": { "totalBytes": 0, "reclaimableBytes": 0, "candidates": 0 },
@@ -241,7 +241,7 @@ Règle : si l'outil n'est pas installé (commande introuvable), on lit le chemin
 1. **Liste de chemins protégés** (jamais supprimés, quoi qu'il arrive) : racine de lecteur, `C:\Windows`, `C:\Program Files*`, `C:\Users\<u>` (racine), `Documents`, `Desktop`, `Pictures`, dossiers `.git`, `.ssh`, `.gnupg`, tout ce qui est hors des racines de scan.
 2. **Validation avant action** : le chemin est un descendant strict d'une racine autorisée, existe, n'est pas un reparse point, et correspond toujours au type attendu (re-vérifier le marqueur juste avant suppression — TOCTOU).
 3. **Dry-run par défaut** ; `--apply` requis ; confirmation interactive sauf `--yes`.
-4. **Journal** : chaque suppression écrite dans `%LOCALAPPDATA%\reclaim\logs\YYYY-MM-DD.jsonl` (chemin, taille, résultat).
+4. **Journal** : chaque suppression écrite dans `%LOCALAPPDATA%\devreclaim\logs\YYYY-MM-DD.jsonl` (chemin, taille, résultat).
 5. **[RÉVISÉ] Corbeille/quarantaine** : `--trash` est le **défaut en v0.1**, même si plus lent sur de gros `node_modules`. `--delete` reste disponible pour qui le demande explicitement. Un outil neuf et non signé n'a pas droit à l'erreur sur la première impression ; la réversibilité prime sur la vitesse jusqu'à ce qu'une réputation soit établie (voir §13, décision révisée).
 6. **Pas d'élévation silencieuse** : si l'admin est requis (compaction), le dire et s'arrêter avec le code `3` plutôt que d'auto-élever.
 7. **Pas de suppression de fichiers verrouillés par un processus actif** sans l'indiquer (erreur claire, continuer avec les autres).
@@ -253,8 +253,8 @@ Règle : si l'outil n'est pas installé (commande introuvable), on lit le chemin
 ## 7. Architecture
 
 ```
-reclaim/
-├─ cmd/reclaim/main.go            # point d'entrée (cobra)
+devreclaim/
+├─ cmd/devreclaim/main.go            # point d'entrée (cobra)
 ├─ internal/
 │  ├─ cli/                        # commandes cobra (scan, clean, wsl, config…)
 │  ├─ core/
@@ -273,7 +273,7 @@ reclaim/
 │  ├─ safety/                     # chemins protégés, validations
 │  ├─ report/                     # rendu texte, JSON, (HTML plus tard)
 │  ├─ tui/                        # bubbletea (v0.1 minimal ou v0.2)
-│  └─ config/                     # reclaim.toml
+│  └─ config/                     # devreclaim.toml
 ├─ testdata/                      # arborescences de fixtures
 ├─ docs/                          # guides, FAQ, sécurité
 ├─ .github/workflows/             # ci.yml, release.yml, codeql/govulncheck
@@ -317,7 +317,7 @@ type Filesystem interface {             // permet de tester sans toucher au vrai
 | TUI | `charmbracelet/bubbletea` + `lipgloss` + `bubbles` | écosystème mature, beau rendu |
 | Windows API | `golang.org/x/sys/windows`, `golang.org/x/sys/windows/registry` | registre, handles, file IDs |
 | Encodage | `golang.org/x/text` | sortie UTF-16 de `wsl.exe` |
-| Config | `pelletier/go-toml/v2` | `reclaim.toml` |
+| Config | `pelletier/go-toml/v2` | `devreclaim.toml` |
 | Tests | `testing` + `testify` | assertions lisibles |
 | Release | `goreleaser` | binaires + checksums + attestation |
 | Lint | `golangci-lint`, `govulncheck` | qualité + vulnérabilités |
@@ -370,11 +370,11 @@ type Filesystem interface {             // permet de tester sans toucher au vrai
 
 **Squelette README**
 ```
-# Reclaim
+# devreclaim
 One-line promise.
 [GIF]
 ## Install   (winget / scoop / releases)
-## Quick start   reclaim scan  →  reclaim clean --apply
+## Quick start   devreclaim scan  →  devreclaim clean --apply
 ## What it finds   (tableau)
 ## Safety   (dry-run, protected paths, log)
 ## WSL & Docker   (lien docs/wsl.md)
@@ -395,21 +395,21 @@ One-line promise.
 **M0 — Fondations + apprentissage Go (3–5 jours, [RÉVISÉ] temps d'apprentissage inclus)**
 - Vérifier le nom ; créer le dépôt ; licence MIT ; squelette Go + cobra + CI minimale.
 - **[RÉVISÉ]** Budgeter explicitement 1–2 jours de prise en main de Go (syntaxe, modules, goroutines/channels de base) si ce n'est pas déjà fait — ne pas l'absorber silencieusement dans M1.
-- ✅ `reclaim version` fonctionne ; CI verte sur Windows.
+- ✅ `devreclaim version` fonctionne ; CI verte sur Windows.
 
 **M1 — Cœur + scanner WSL lecture seule (4–6 jours)** ← *première chose à construire*
 - Types `Candidate`, interface `Scanner`, `CommandRunner` mockable, rapport texte + JSON.
 - Scanner WSL : registre → distros → taille `.vhdx` → `df` → estimation.
-- ✅ `reclaim wsl status` affiche, pour chaque distro, taille VHDX / utilisé / récupérable estimé, sur une vraie machine.
+- ✅ `devreclaim wsl status` affiche, pour chaque distro, taille VHDX / utilisé / récupérable estimé, sur une vraie machine.
 
 **M1.5 — [RÉVISÉ] Point de validation (quelques jours, en parallèle de la suite)**
-- Diffuser `reclaim wsl status` seul (petit outil ou article de blog) avant d'investir dans M2–M7.
+- Diffuser `devreclaim wsl status` seul (petit outil ou article de blog) avant d'investir dans M2–M7.
 - ✅ au moins un signal externe réel (quelqu'un d'autre que l'auteur l'utilise, ouvre une issue, ou confirme que le chiffre affiché lui est utile) avant de continuer sans réserve sur M2.
 - Si le signal est nul après une diffusion sérieuse : reconsidérer l'ampleur du reste du plan plutôt que d'enchaîner M2–M7 à l'aveugle.
 
 **M2 — Artefacts de projets (6–8 jours, [RÉVISÉ] durée augmentée)**
 - Parcours concurrent, marqueurs, âge, détection reparse points, dédup hardlinks.
-- ✅ `reclaim scan --category project-artifacts` correct sur 3+ projets réels ; tests fixtures verts ; temps de scan raisonnable sur un gros dossier.
+- ✅ `devreclaim scan --category project-artifacts` correct sur 3+ projets réels ; tests fixtures verts ; temps de scan raisonnable sur un gros dossier.
 
 **M3 — Caches de paquets (3–4 jours)**
 - Détection de chemins via commandes natives + repli par défaut.
@@ -506,11 +506,11 @@ Contexte : dans cette niche, un script de compaction WSL a 112★ [F] ; viser pl
 
 - [ ] Vérifier le nom (GitHub, winget, scoop, domaine).
 - [ ] Créer le dépôt public, licence MIT, README minimal.
-- [ ] `go mod init`, cobra, `reclaim version`.
+- [ ] `go mod init`, cobra, `devreclaim version`.
 - [ ] CI GitHub Actions (Windows) verte.
 - [ ] Ouvrir une VM/PC de test avec WSL2 + Docker Desktop.
 - [ ] Écrire `docs/what-gets-deleted.md` (v0) **avant** d'écrire le code de suppression.
-- [ ] Commencer M1 : `reclaim wsl status` en lecture seule.
+- [ ] Commencer M1 : `devreclaim wsl status` en lecture seule.
 - [ ] **[RÉVISÉ]** Prévoir dès maintenant la diffusion du point de validation M1.5 (à qui le montrer, où le poster) pour ne pas le découvrir après coup.
 
 ---
@@ -526,5 +526,5 @@ Contexte : dans cette niche, un script de compaction WSL a 112★ [F] ; viser pl
 - Microsoft Q&A, WSL disk — https://learn.microsoft.com/en-us/answers/questions/4006845/reduce-disk-space-consumption-for-wsl
 - freeCodeCamp, WSL disk — https://www.freecodecamp.org/news/how-to-free-up-and-automatically-manage-disk-space-for-wsl-on-windows-1011/
 - WSL-VHDX-Compact — https://github.com/hyperphantasia/WSL-VHDX-Compact
-- Forum Docker, VHDX — https://forums.docker.com/t/docker-desktop-wsl2-vhdx-grows-by-1-5gb-after-every-update-no-way-to-reclaim-space/151729
+- Forum Docker, VHDX — https://forums.docker.com/t/docker-desktop-wsl2-vhdx-grows-by-1-5gb-after-every-update-no-way-to-devreclaim-space/151729
 - WSL UI (Octasoft) — https://wsl-ui.octasoft.co.uk/blog/managing-wsl-disk-space
