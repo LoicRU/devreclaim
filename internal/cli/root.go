@@ -5,6 +5,7 @@ import (
 
 	"github.com/LoicRU/devreclaim/internal/core"
 	"github.com/LoicRU/devreclaim/internal/platform/exec"
+	"github.com/LoicRU/devreclaim/internal/scanners/projects"
 	"github.com/LoicRU/devreclaim/internal/scanners/wsl"
 )
 
@@ -18,6 +19,7 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	root.AddCommand(newVersionCmd())
+	root.AddCommand(newScanCmd(func() core.Scanner { return projects.New() }))
 	root.AddCommand(newWSLCmd(func() core.Scanner { return wsl.New(exec.OSRunner{}) }))
 
 	return root
