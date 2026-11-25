@@ -133,7 +133,7 @@ func (s *Scanner) inspect(ctx context.Context, sp spec, minSize int64) (core.Can
 		c.Action = core.ActionSpec{Type: "run-command", Command: sp.clean}
 	}
 
-	if !fromTool {
+	if !fromTool && len(sp.locate) > 0 {
 		c.Warnings = append(c.Warnings, "default folder, the tool did not answer: check the path before cleaning")
 	}
 

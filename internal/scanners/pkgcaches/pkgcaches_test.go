@@ -148,6 +148,10 @@ func TestCargoUsesCargoHome(t *testing.T) {
 	if got["cargo registry"].SizeBytes != 700 || got["cargo git"].SizeBytes != 200 {
 		t.Fatalf("got %+v", got)
 	}
+
+	if len(got["cargo registry"].Warnings) != 0 {
+		t.Fatalf("a cache without locate command must not warn: %v", got["cargo registry"].Warnings)
+	}
 }
 
 func TestMediumRiskCachesCarryAWarning(t *testing.T) {
@@ -163,7 +167,7 @@ func TestMediumRiskCachesCarryAWarning(t *testing.T) {
 			t.Fatalf("%s not found", name)
 		}
 
-		if c.Risk != core.RiskMedium || len(c.Warnings) < 2 {
+		if c.Risk != core.RiskMedium || len(c.Warnings) != 1 {
 			t.Fatalf("%s: risk %s warnings %v", name, c.Risk, c.Warnings)
 		}
 	}
