@@ -3,6 +3,7 @@
 package pkgcaches
 
 import (
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -36,7 +37,16 @@ type Env func(key string) string
 func home(env Env) string { return env("USERPROFILE") }
 
 func unixHome(parts ...string) func(Env) string {
-	return func(e Env) string { return under(e("HOME"), parts...) }
+	return func(e Env) string { return underUnix(e("HOME"), parts...) }
+}
+
+// underUnix joins POSIX paths (WSL distros) whatever the host OS is.
+func underUnix(base string, parts ...string) string {
+	if base == "" {
+		return ""
+	}
+
+	return path.Join(append([]string{base}, parts...)...)
 }
 
 func under(base string, parts ...string) string {
@@ -68,7 +78,7 @@ func cargoHomeUnix(env Env) string {
 		return v
 	}
 
-	return under(env("HOME"), ".cargo")
+	return underUnix(env("HOME"), ".cargo")
 }
 
 func gradleHomeUnix(env Env) string {
@@ -76,7 +86,7 @@ func gradleHomeUnix(env Env) string {
 		return v
 	}
 
-	return under(env("HOME"), ".gradle")
+	return underUnix(env("HOME"), ".gradle")
 }
 
 func nugetParse(out string) string {
@@ -133,13 +143,13 @@ func specs() []spec {
 		{
 			name:     "cargo registry",
 			fallback: func(e Env) string { return under(cargoHome(e), "registry") },
-			linux:    func(e Env) string { return under(cargoHomeUnix(e), "registry") },
+			linux:    func(e Env) string { return underUnix(cargoHomeUnix(e), "registry") },
 			risk:     core.RiskSafe, counted: true, hint: "downloaded again on the next cargo build",
 		},
 		{
 			name:     "cargo git",
 			fallback: func(e Env) string { return under(cargoHome(e), "git") },
-			linux:    func(e Env) string { return under(cargoHomeUnix(e), "git") },
+			linux:    func(e Env) string { return underUnix(cargoHomeUnix(e), "git") },
 			risk:     core.RiskSafe, counted: true, hint: "cloned again on the next cargo build",
 		},
 		{
@@ -156,7 +166,7 @@ func specs() []spec {
 		{
 			name:     "Gradle caches",
 			fallback: func(e Env) string { return under(gradleHome(e), "caches") },
-			linux:    func(e Env) string { return under(gradleHomeUnix(e), "caches") },
+			linux:    func(e Env) string { return underUnix(gradleHomeUnix(e), "caches") },
 			risk:     core.RiskMedium, counted: true,
 			warning: "the next Gradle build re-downloads everything and can be slow or need network",
 			hint:    "downloaded again on the next Gradle build",

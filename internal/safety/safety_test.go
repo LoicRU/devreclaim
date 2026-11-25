@@ -61,7 +61,7 @@ func TestRefusesRootItselfAndOutsideRoot(t *testing.T) {
 }
 
 func TestRefusesDriveRootAndRelativePaths(t *testing.T) {
-	mustRefuse(t, Guard{}, string(filepath.Separator), nil, "drive root")
+	mustRefuse(t, Guard{}, filepath.VolumeName(os.TempDir())+string(filepath.Separator), nil, "drive root")
 	mustRefuse(t, Guard{}, "node_modules", nil, "absolute")
 }
 

@@ -85,10 +85,10 @@ func newScanner(f *fakeWSL) *Scanner {
 	}
 }
 
-func scanAll(t *testing.T, s *Scanner, min int64) map[string]core.Candidate {
+func scanAll(t *testing.T, s *Scanner, minSize int64) map[string]core.Candidate {
 	t.Helper()
 
-	ch, err := s.Scan(context.Background(), core.ScanOptions{MinSize: min})
+	ch, err := s.Scan(context.Background(), core.ScanOptions{MinSize: minSize})
 	if err != nil {
 		t.Fatal(err)
 	}
