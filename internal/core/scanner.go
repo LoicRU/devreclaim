@@ -2,9 +2,13 @@ package core
 
 import "context"
 
-// ScanOptions carries settings shared by all scanners. It is empty for now and
-// will grow with the project scanners (roots, minimum size...).
-type ScanOptions struct{}
+// ScanOptions carries settings shared by all scanners.
+type ScanOptions struct {
+	// Roots are the folders the project scanner walks. Other scanners ignore it.
+	Roots []string
+	// MinSize hides candidates smaller than this many bytes (0 keeps all).
+	MinSize int64
+}
 
 // Scanner finds candidates in one area. Scanners are read-only.
 type Scanner interface {
