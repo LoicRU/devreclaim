@@ -85,10 +85,16 @@ func (r Report) WriteJSON(w io.Writer) error {
 func (r Report) WriteText(w io.Writer) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 
-	fmt.Fprintln(tw, "NAME\tSIZE\tRECLAIMABLE (est.)")
+	fmt.Fprintln(tw, "NAME\tSIZE\tRECLAIMABLE (est.)\tNOTE")
 
 	for _, c := range r.Candidates {
-		fmt.Fprintf(tw, "%s\t%s\t%s\n", c.Label, HumanSize(c.SizeBytes), HumanSize(c.ReclaimBytes))
+		// The note explains why a candidate is not counted as reclaimable.
+		note := ""
+		if c.ReclaimBytes == 0 && c.SizeBytes > 0 {
+			note = c.ReclaimNote
+		}
+
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", c.Label, HumanSize(c.SizeBytes), HumanSize(c.ReclaimBytes), note)
 	}
 
 	if err := tw.Flush(); err != nil {

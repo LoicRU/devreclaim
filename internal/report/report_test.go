@@ -17,6 +17,7 @@ var now = time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
 func sample() []core.Candidate {
 	return []core.Candidate{
 		{Label: "small", SizeBytes: 2 * gib, ReclaimBytes: gib},
+		{Label: "kept", SizeBytes: gib, ReclaimNote: "project active 2 days ago: not counted"},
 		{Label: "big", SizeBytes: 100 * gib, ReclaimBytes: 60 * gib, Warnings: []string{"careful"}},
 	}
 }
@@ -28,7 +29,7 @@ func TestNewSortsAndSums(t *testing.T) {
 		t.Fatalf("expected the biggest reclaimable first, got %q", r.Candidates[0].Label)
 	}
 
-	if r.Summary != (Summary{TotalBytes: 102 * gib, ReclaimableBytes: 61 * gib, Candidates: 2}) {
+	if r.Summary != (Summary{TotalBytes: 103 * gib, ReclaimableBytes: 61 * gib, Candidates: 3}) {
 		t.Fatalf("unexpected summary: %+v", r.Summary)
 	}
 
@@ -85,7 +86,8 @@ func TestWriteText(t *testing.T) {
 		"100.0 GB", "60.0 GB",
 		"! big: careful",
 		"! global note",
-		"Total: 102.0 GB, reclaimable (estimate): 61.0 GB",
+		"Total: 103.0 GB, reclaimable (estimate): 61.0 GB",
+		"NOTE", "project active 2 days ago: not counted",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output is missing %q:\n%s", want, out)
