@@ -46,3 +46,20 @@ is recovered, the tool says so instead of showing a neutral success.
 
 `wsl --shutdown` stops every WSL distro: save your work first, and consider a backup with
 `wsl --export <name> backup.tar`.
+
+## Inside WSL distros (`--wsl`)
+
+`devreclaim scan --wsl` and `devreclaim clean --wsl` also look inside your distros:
+package caches (npm, pip, cargo, Go...) and old snap revisions. This starts the distros
+that are stopped. It is off by default.
+
+- Cleaning only runs the tool's own command inside the distro (`npm cache clean --force`,
+  `go clean -cache`...), through `wsl.exe -d <distro> --`. Nothing is removed with `rm`.
+  Caches that have no such command (cargo, Gradle, Maven) are listed but never cleaned.
+- Only a disabled snap revision is proposed, and only if the same snap has an active
+  revision. A snap whose revisions are all disabled is never touched, because removing
+  its last revision uninstalls it. Only `snap remove <name> --revision=<n>` can run as root.
+- Docker images and volumes are not handled yet.
+
+After cleaning inside a distro, run `devreclaim wsl compact` to give the space back to
+Windows: the virtual disk never shrinks by itself.

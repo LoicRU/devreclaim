@@ -18,6 +18,8 @@ devreclaim scan --category package-caches
 devreclaim wsl status
 devreclaim clean                 # dry run: shows the plan
 devreclaim clean --apply         # asks, then sends folders to the Recycle Bin
+devreclaim scan --wsl            # also look inside WSL distros
+devreclaim clean --wsl --apply   # clean caches inside WSL, then compact
 devreclaim wsl compact --distro Ubuntu           # dry run
 devreclaim wsl compact --distro Ubuntu --apply   # admin terminal required
 ```
