@@ -24,6 +24,7 @@ func (OSRunner) Run(ctx context.Context, name string, args ...string) ([]byte, [
 	cmd := osexec.CommandContext(ctx, name, args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	detachConsole(cmd)
 
 	err := cmd.Run()
 
