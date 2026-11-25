@@ -2,7 +2,7 @@
 
 See exactly what's eating your dev disk on Windows — projects, caches, WSL, Docker — and devreclaim it safely.
 
-> **Status**: early development (M1). Only the read-only `devreclaim wsl status` works. See [`docs/PLAN.md`](docs/PLAN.md)
+> **Status**: early development (M2). Only the read-only `scan` and `wsl status` commands work. See [`docs/PLAN.md`](docs/PLAN.md)
 > for the full roadmap, and [`docs/what-gets-deleted.md`](docs/what-gets-deleted.md) (coming soon)
 > for exactly what each category proposes to remove.
 
@@ -13,11 +13,12 @@ Not released yet. Once `v0.1.0` ships: GitHub Releases, then winget/scoop.
 ## Quick start
 
 ```
-devreclaim wsl status          # size of each WSL2 virtual disk vs. space really used
-devreclaim wsl status --json
+devreclaim scan --root ~/projects   # rebuildable node_modules, target, .venv... in inactive projects
+devreclaim scan --min-size 100MB --json
+devreclaim wsl status               # size of each WSL2 virtual disk vs. space really used
 ```
 
-`devreclaim scan` and `devreclaim clean` are not implemented yet.
+`devreclaim clean` is not implemented yet: nothing is deleted for now.
 
 ## Safety
 
