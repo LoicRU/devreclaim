@@ -1,4 +1,4 @@
-module github.com/LoicRU/reclaim
+module github.com/LoicRU/devreclaim
 
 go 1.27.2
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/LoicRU/reclaim/internal/cli"
+	"github.com/LoicRU/devreclaim/internal/cli"
 )
 
 func main() {
