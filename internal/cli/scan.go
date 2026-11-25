@@ -2,9 +2,13 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -16,36 +20,51 @@ import (
 
 const defaultMinSize = "50MB"
 
-func newScanCmd(newScanner func() core.Scanner) *cobra.Command {
+func newScanCmd(newScanners func() []core.Scanner) *cobra.Command {
 	var (
-		roots   []string
-		minSize string
-		asJSON  bool
+		roots    []string
+		minSize  string
+		category string
+		asJSON   bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "scan",
-		Short: "Find project build artifacts that can be rebuilt (read-only)",
+		Short: "Find build artifacts and package caches that can be rebuilt (read-only)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runScan(cmd, newScanner(), roots, minSize, asJSON)
+			return runScan(cmd, newScanners(), scanArgs{roots: roots, minSize: minSize, category: category, asJSON: asJSON})
 		},
 	}
 
 	cmd.Flags().StringArrayVar(&roots, "root", nil, "folder to scan, repeatable (default: current folder)")
-	cmd.Flags().StringVar(&minSize, "min-size", defaultMinSize, "hide artifacts smaller than this, e.g. 100MB")
+	cmd.Flags().StringVar(&minSize, "min-size", defaultMinSize, "hide results smaller than this, e.g. 100MB")
+	cmd.Flags().StringVar(&category, "category", "",
+		"only scan this category: project-artifacts or package-caches (default: all)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the report as JSON")
 
 	return cmd
 }
 
-func runScan(cmd *cobra.Command, scanner core.Scanner, roots []string, minSize string, asJSON bool) error {
-	minBytes, err := report.ParseSize(minSize)
+type scanArgs struct {
+	roots    []string
+	minSize  string
+	category string
+	asJSON   bool
+}
+
+func runScan(cmd *cobra.Command, scanners []core.Scanner, args scanArgs) error {
+	minBytes, err := report.ParseSize(args.minSize)
 	if err != nil {
 		return fmt.Errorf("invalid --min-size: %w", err)
 	}
 
-	roots, err = resolveRoots(roots)
+	scanners, err = filterByCategory(scanners, args.category)
+	if err != nil {
+		return err
+	}
+
+	roots, err := resolveRoots(args.roots)
 	if err != nil {
 		return err
 	}
@@ -55,20 +74,20 @@ func runScan(cmd *cobra.Command, scanner core.Scanner, roots []string, minSize s
 		ctx = context.Background()
 	}
 
-	ch, err := scanner.Scan(ctx, core.ScanOptions{Roots: roots, MinSize: minBytes})
+	candidates, warnings, err := scanAll(ctx, scanners, core.ScanOptions{Roots: roots, MinSize: minBytes})
 	if err != nil {
 		return err
 	}
 
-	rep := report.New(buildinfo.Version, time.Now().UTC(), core.Collect(ch), nil)
+	rep := report.New(buildinfo.Version, time.Now().UTC(), candidates, warnings)
 	out := cmd.OutOrStdout()
 
-	if asJSON {
+	if args.asJSON {
 		return rep.WriteJSON(out)
 	}
 
 	if len(rep.Candidates) == 0 {
-		_, err = fmt.Fprintf(out, "No rebuildable artifact of %s or more found in %v.\n", report.HumanSize(minBytes), roots)
+		_, err = fmt.Fprintf(out, "No artifact or cache of %s or more found.\n", report.HumanSize(minBytes))
 
 		return err
 	}
@@ -80,6 +99,81 @@ func runScan(cmd *cobra.Command, scanner core.Scanner, roots []string, minSize s
 	_, err = fmt.Fprintln(out, "\nRead-only scan: nothing was deleted. Sizes are logical sizes.")
 
 	return err
+}
+
+// filterByCategory keeps the scanners of one category ("" keeps all).
+func filterByCategory(scanners []core.Scanner, category string) ([]core.Scanner, error) {
+	if category == "" {
+		return scanners, nil
+	}
+
+	var known []string
+
+	var out []core.Scanner
+
+	for _, s := range scanners {
+		known = append(known, string(s.Category()))
+
+		if string(s.Category()) == category {
+			out = append(out, s)
+		}
+	}
+
+	if len(out) == 0 {
+		return nil, fmt.Errorf("invalid --category %q (available: %s)", category, strings.Join(slices.Compact(known), ", "))
+	}
+
+	return out, nil
+}
+
+// scanAll runs the scanners side by side. A scanner that cannot start becomes a
+// warning; the scan only fails when none of them could start.
+func scanAll(ctx context.Context, scanners []core.Scanner, opts core.ScanOptions) ([]core.Candidate, []string, error) {
+	var (
+		channels []<-chan core.Candidate
+		warnings []string
+		errs     []error
+	)
+
+	for _, s := range scanners {
+		ch, err := s.Scan(ctx, opts)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", s.Name(), err))
+			warnings = append(warnings, fmt.Sprintf("%s: %v", s.Name(), err))
+
+			continue
+		}
+
+		channels = append(channels, ch)
+	}
+
+	if len(channels) == 0 && len(errs) > 0 {
+		return nil, nil, errors.Join(errs...)
+	}
+
+	var (
+		wg  sync.WaitGroup
+		mu  sync.Mutex
+		all []core.Candidate
+	)
+
+	for _, ch := range channels {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			got := core.Collect(ch)
+
+			mu.Lock()
+			all = append(all, got...)
+			mu.Unlock()
+		}()
+	}
+
+	wg.Wait()
+
+	return all, warnings, nil
 }
 
 // resolveRoots makes roots absolute and defaults to the current folder.

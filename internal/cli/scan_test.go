@@ -45,8 +45,14 @@ func (s spyScanner) Scan(_ context.Context, opts core.ScanOptions) (<-chan core.
 func runScanCmd(t *testing.T, s spyScanner, args ...string) (string, error) {
 	t.Helper()
 
+	return runScanCmdWith(t, s, nil, args...)
+}
+
+func runScanCmdWith(t *testing.T, s spyScanner, extra []core.Scanner, args ...string) (string, error) {
+	t.Helper()
+
 	root := &cobra.Command{Use: "devreclaim"}
-	root.AddCommand(newScanCmd(func() core.Scanner { return s }))
+	root.AddCommand(newScanCmd(func() []core.Scanner { return append([]core.Scanner{s}, extra...) }))
 
 	out := &bytes.Buffer{}
 	root.SetOut(out)
@@ -154,7 +160,7 @@ func TestScanWithoutResult(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(out, "No rebuildable artifact of 100.0 MB or more") {
+	if !strings.Contains(out, "No artifact or cache of 100.0 MB or more") {
 		t.Fatalf("unexpected output: %q", out)
 	}
 }
@@ -174,5 +180,70 @@ func TestScanReturnsScannerError(t *testing.T) {
 	_, err := runScanCmd(t, spyScanner{got: &got, err: errors.New("boom")})
 	if err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("expected the scanner error, got %v", err)
+	}
+}
+
+// cacheScanner is a second scanner of another category.
+type cacheScanner struct{ spyScanner }
+
+func (cacheScanner) Name() string            { return "caches" }
+func (cacheScanner) Category() core.Category { return core.CategoryPackageCaches }
+
+func TestScanMergesScanners(t *testing.T) {
+	var a, b core.ScanOptions
+
+	npm := core.Candidate{Label: "npm", SizeBytes: 1 << 30, ReclaimBytes: 1 << 30}
+	extra := []core.Scanner{cacheScanner{spyScanner{got: &b, candidates: []core.Candidate{npm}}}}
+
+	out, err := runScanCmdWith(t, spyScanner{got: &a, candidates: []core.Candidate{nodeModules}}, extra)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, want := range []string{"web/node_modules", "npm"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output is missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestScanCategoryFiltersScanners(t *testing.T) {
+	var a, b core.ScanOptions
+
+	npm := core.Candidate{Label: "npm", SizeBytes: 1 << 30, ReclaimBytes: 1 << 30}
+	extra := []core.Scanner{cacheScanner{spyScanner{got: &b, candidates: []core.Candidate{npm}}}}
+
+	out, err := runScanCmdWith(t, spyScanner{got: &a, candidates: []core.Candidate{nodeModules}}, extra,
+		"--category", "package-caches")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(out, "web/node_modules") || !strings.Contains(out, "npm") {
+		t.Fatalf("unexpected output:\n%s", out)
+	}
+}
+
+func TestScanRejectsUnknownCategory(t *testing.T) {
+	var got core.ScanOptions
+
+	_, err := runScanCmd(t, spyScanner{got: &got}, "--category", "nope")
+	if err == nil || !strings.Contains(err.Error(), "--category") {
+		t.Fatalf("expected a --category error, got %v", err)
+	}
+}
+
+func TestScanKeepsGoingWhenOneScannerFails(t *testing.T) {
+	var a, b core.ScanOptions
+
+	extra := []core.Scanner{cacheScanner{spyScanner{got: &b, err: errors.New("boom")}}}
+
+	out, err := runScanCmdWith(t, spyScanner{got: &a, candidates: []core.Candidate{nodeModules}}, extra)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(out, "web/node_modules") || !strings.Contains(out, "boom") {
+		t.Fatalf("expected results and a warning:\n%s", out)
 	}
 }
