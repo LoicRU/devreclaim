@@ -27,6 +27,11 @@ reclaim clean --apply
 
 See [`docs/PLAN.md`](docs/PLAN.md) for the full safety model.
 
+## Contributing
+
+Commit messages follow [`docs/COMMITS.md`](docs/COMMITS.md). Enable the hook with
+`git config core.hooksPath .githooks`. Lint with `golangci-lint run`.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
