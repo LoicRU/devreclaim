@@ -1,0 +1,38 @@
+#!/bin/sh
+# Validates commit messages against docs/COMMITS.md.
+# Enable once per clone:  git config core.hooksPath .githooks
+
+msg_file="$1"
+
+# Drop comment lines (git adds them in the editor) before checking.
+msg=$(grep -v '^#' "$msg_file")
+subject=$(printf '%s\n' "$msg" | head -n 1)
+
+# Let git-generated messages through.
+case "$subject" in
+  "Merge "* | "Revert "* | "fixup! "* | "squash! "*) exit 0 ;;
+esac
+
+fail() {
+  echo "commit-msg: $1" >&2
+  echo "See docs/COMMITS.md." >&2
+  exit 1
+}
+
+if ! printf '%s\n' "$subject" | grep -Eq '^(feat|fix|test|docs|refactor|chore|ci|build|perf)(\([a-z0-9-]+\))?: [^ ].*'; then
+  fail "subject must look like 'type(scope): summary' (types: feat fix test docs refactor chore ci build perf)."
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+  fail "subject is ${#subject} characters long (max 72)."
+fi
+
+case "$subject" in
+  *.) fail "subject must not end with a period." ;;
+esac
+
+if printf '%s\n' "$msg" | grep -Eiq 'co-authored-by:.*(claude|anthropic)|generated with.*claude|claude\.ai/code'; then
+  fail "remove AI tool attribution lines from the message."
+fi
+
+exit 0
