@@ -68,7 +68,12 @@ func (s *Scanner) Scan(ctx context.Context, _ core.ScanOptions) (<-chan core.Can
 }
 
 func (s *Scanner) listDistros(ctx context.Context) ([]Distro, error) {
-	stdout, stderr, err := s.Runner.Run(ctx, "reg.exe", "query", lxssKey, "/s")
+	return ListDistros(ctx, s.Runner)
+}
+
+// ListDistros returns the registered WSL distributions.
+func ListDistros(ctx context.Context, runner exec.CommandRunner) ([]Distro, error) {
+	stdout, stderr, err := runner.Run(ctx, "reg.exe", "query", lxssKey, "/s")
 	if err != nil {
 		return nil, fmt.Errorf("read WSL registry key (is WSL installed?): %w: %s",
 			err, strings.TrimSpace(exec.DecodeOutput(stderr)))
