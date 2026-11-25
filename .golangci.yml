@@ -1,0 +1,37 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - errorlint
+    - gosec
+    - gocritic
+    - revive
+    - misspell
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/LoicRU/reclaim
