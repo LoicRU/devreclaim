@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/LoicRU/reclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/core"
 )
 
 const regSample = "\r\n" +

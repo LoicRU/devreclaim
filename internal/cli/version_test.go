@@ -16,7 +16,7 @@ func TestVersionCommand(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(out.String(), "reclaim") {
-		t.Fatalf("expected output to mention reclaim, got: %q", out.String())
+	if !strings.Contains(out.String(), "devreclaim") {
+		t.Fatalf("expected output to mention devreclaim, got: %q", out.String())
 	}
 }

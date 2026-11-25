@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LoicRU/reclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/core"
 )
 
 const gib = int64(1) << 30
@@ -32,7 +32,7 @@ func TestNewSortsAndSums(t *testing.T) {
 		t.Fatalf("unexpected summary: %+v", r.Summary)
 	}
 
-	if r.SchemaVersion != 1 || r.Tool != "reclaim" || r.Version != "1.2.3" {
+	if r.SchemaVersion != 1 || r.Tool != "devreclaim" || r.Version != "1.2.3" {
 		t.Fatalf("unexpected header: %+v", r)
 	}
 }

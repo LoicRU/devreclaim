@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/LoicRU/reclaim/internal/core"
-	"github.com/LoicRU/reclaim/internal/platform/exec"
+	"github.com/LoicRU/devreclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/platform/exec"
 )
 
 const reclaimNote = "estimate (upper bound): the real gain depends on fstrim and compaction"

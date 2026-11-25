@@ -10,7 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/LoicRU/reclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/core"
 )
 
 // SchemaVersion is the version of the JSON contract. Never change the shape of
@@ -56,7 +56,7 @@ func New(version string, now time.Time, candidates []core.Candidate, warnings []
 
 	r := Report{
 		SchemaVersion: SchemaVersion,
-		Tool:          "reclaim",
+		Tool:          "devreclaim",
 		Version:       version,
 		GeneratedAt:   now,
 		Candidates:    sorted,

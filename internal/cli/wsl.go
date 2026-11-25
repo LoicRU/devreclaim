@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/LoicRU/reclaim/internal/buildinfo"
-	"github.com/LoicRU/reclaim/internal/core"
-	"github.com/LoicRU/reclaim/internal/report"
+	"github.com/LoicRU/devreclaim/internal/buildinfo"
+	"github.com/LoicRU/devreclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/report"
 )
 
 func newWSLCmd(newScanner func() core.Scanner) *cobra.Command {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/LoicRU/reclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/core"
 )
 
 type fakeScanner struct {
@@ -36,11 +36,11 @@ func (f fakeScanner) Scan(context.Context, core.ScanOptions) (<-chan core.Candid
 	return ch, nil
 }
 
-// runWSL executes `reclaim <args>` with a fake scanner and returns stdout.
+// runWSL executes `devreclaim <args>` with a fake scanner and returns stdout.
 func runWSL(t *testing.T, s fakeScanner, args ...string) (string, error) {
 	t.Helper()
 
-	root := &cobra.Command{Use: "reclaim"}
+	root := &cobra.Command{Use: "devreclaim"}
 	root.AddCommand(newWSLCmd(func() core.Scanner { return s }))
 
 	out := &bytes.Buffer{}
