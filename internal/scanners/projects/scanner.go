@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/LoicRU/devreclaim/internal/core"
+	"github.com/LoicRU/devreclaim/internal/platform/fsutil"
 )
 
 const (
@@ -147,7 +148,7 @@ func (s *Scanner) measure(ctx context.Context, list []found, minSize int64, out 
 			defer wg.Done()
 
 			for f := range jobs {
-				size := dirSize(ctx, f.Path)
+				size := fsutil.DirSize(ctx, f.Path)
 				if size == 0 || size < minSize {
 					continue
 				}
@@ -223,38 +224,6 @@ func label(f found) string {
 	}
 
 	return filepath.ToSlash(rel) + "/" + f.Kind
-}
-
-// dirSize adds up the size of the regular files under dir without following
-// symlinks. Unreadable entries are ignored.
-func dirSize(ctx context.Context, dir string) int64 {
-	var total int64
-
-	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		if err != nil {
-			if d != nil && d.IsDir() {
-				return fs.SkipDir
-			}
-
-			return nil
-		}
-
-		if !d.Type().IsRegular() {
-			return nil
-		}
-
-		if info, infoErr := d.Info(); infoErr == nil {
-			total += info.Size()
-		}
-
-		return nil
-	})
-
-	return total
 }
 
 // projectActivity returns the newest modification time found in the first
