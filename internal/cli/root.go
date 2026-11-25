@@ -1,13 +1,9 @@
 package cli
 
 import (
-	"github.com/spf13/cobra"
+	"time"
 
-	"github.com/LoicRU/devreclaim/internal/core"
-	"github.com/LoicRU/devreclaim/internal/platform/exec"
-	"github.com/LoicRU/devreclaim/internal/scanners/pkgcaches"
-	"github.com/LoicRU/devreclaim/internal/scanners/projects"
-	"github.com/LoicRU/devreclaim/internal/scanners/wsl"
+	"github.com/spf13/cobra"
 )
 
 // NewRootCmd builds the devreclaim root command and wires up subcommands.
@@ -20,10 +16,14 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	root.AddCommand(newVersionCmd())
-	root.AddCommand(newScanCmd(func() []core.Scanner {
-		return []core.Scanner{projects.New(), pkgcaches.New(exec.OSRunner{})}
+	root.AddCommand(newScanCmd(allScanners))
+	root.AddCommand(newCleanCmd(cleanDeps{
+		scanners: allScanners,
+		executor: realExecutor,
+		logDir:   defaultLogDir,
+		now:      time.Now,
 	}))
-	root.AddCommand(newWSLCmd(func() core.Scanner { return wsl.New(exec.OSRunner{}) }))
+	root.AddCommand(newWSLCmd(wslScanner))
 
 	return root
 }
