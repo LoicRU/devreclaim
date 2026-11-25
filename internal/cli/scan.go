@@ -20,12 +20,13 @@ import (
 
 const defaultMinSize = "50MB"
 
-func newScanCmd(newScanners func() []core.Scanner) *cobra.Command {
+func newScanCmd(newScanners func() []core.Scanner, wslScanners ...func() []core.Scanner) *cobra.Command {
 	var (
 		roots    []string
 		minSize  string
 		category string
 		asJSON   bool
+		withWSL  bool
 	)
 
 	cmd := &cobra.Command{
@@ -33,7 +34,7 @@ func newScanCmd(newScanners func() []core.Scanner) *cobra.Command {
 		Short: "Find build artifacts and package caches that can be rebuilt (read-only)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runScan(cmd, newScanners(), scanArgs{roots: roots, minSize: minSize, category: category, asJSON: asJSON})
+			return runScan(cmd, pickScanners(newScanners, wslScanners, withWSL), scanArgs{roots: roots, minSize: minSize, category: category, asJSON: asJSON})
 		},
 	}
 
@@ -41,9 +42,23 @@ func newScanCmd(newScanners func() []core.Scanner) *cobra.Command {
 	cmd.Flags().StringVar(&minSize, "min-size", defaultMinSize, "hide results smaller than this, e.g. 100MB")
 	cmd.Flags().StringVar(&category, "category", "",
 		"only scan this category: project-artifacts or package-caches (default: all)")
+	cmd.Flags().BoolVar(&withWSL, "wsl", false, "also look inside WSL distros (starts the distros that are stopped)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the report as JSON")
 
 	return cmd
+}
+
+// pickScanners adds the scanners that look inside WSL distros when asked.
+func pickScanners(base func() []core.Scanner, wsl []func() []core.Scanner, withWSL bool) []core.Scanner {
+	scanners := base()
+
+	if withWSL {
+		for _, f := range wsl {
+			scanners = append(scanners, f()...)
+		}
+	}
+
+	return scanners
 }
 
 type scanArgs struct {

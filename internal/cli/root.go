@@ -20,12 +20,13 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	root.AddCommand(newVersionCmd())
-	root.AddCommand(newScanCmd(allScanners))
+	root.AddCommand(newScanCmd(allScanners, wslInsideScanners))
 	root.AddCommand(newCleanCmd(cleanDeps{
-		scanners: allScanners,
-		executor: realExecutor,
-		logDir:   defaultLogDir,
-		now:      time.Now,
+		scanners:    allScanners,
+		wslScanners: wslInsideScanners,
+		executor:    realExecutor,
+		logDir:      defaultLogDir,
+		now:         time.Now,
 	}))
 
 	wslCmd := newWSLCmd(wslScanner)

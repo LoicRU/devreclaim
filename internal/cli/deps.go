@@ -13,11 +13,17 @@ import (
 	"github.com/LoicRU/devreclaim/internal/scanners/pkgcaches"
 	"github.com/LoicRU/devreclaim/internal/scanners/projects"
 	"github.com/LoicRU/devreclaim/internal/scanners/wsl"
+	"github.com/LoicRU/devreclaim/internal/scanners/wslinside"
 )
 
 // allScanners returns the scanners used by scan and clean.
 func allScanners() []core.Scanner {
 	return []core.Scanner{projects.New(), pkgcaches.New(exec.OSRunner{})}
+}
+
+// wslInsideScanners returns the scanners used with --wsl.
+func wslInsideScanners() []core.Scanner {
+	return []core.Scanner{wslinside.New(exec.OSRunner{})}
 }
 
 func wslScanner() core.Scanner { return wsl.New(exec.OSRunner{}) }

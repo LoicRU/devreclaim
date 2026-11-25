@@ -22,9 +22,11 @@ import (
 // cleanDeps are the parts of clean that touch the real machine.
 type cleanDeps struct {
 	scanners func() []core.Scanner
-	executor func(roots []string, mode clean.Mode, journal *clean.Journal) *clean.Executor
-	logDir   func() string
-	now      func() time.Time
+	// wslScanners are added with --wsl (optional).
+	wslScanners func() []core.Scanner
+	executor    func(roots []string, mode clean.Mode, journal *clean.Journal) *clean.Executor
+	logDir      func() string
+	now         func() time.Time
 }
 
 type cleanFlags struct {
@@ -37,6 +39,7 @@ type cleanFlags struct {
 	trash         bool
 	del           bool
 	includeMedium bool
+	withWSL       bool
 	asJSON        bool
 }
 
@@ -62,6 +65,7 @@ func newCleanCmd(d cleanDeps) *cobra.Command {
 	fl.BoolVar(&f.trash, "trash", false, "send folders to the Recycle Bin (default)")
 	fl.BoolVar(&f.del, "delete", false, "delete folders permanently instead of using the Recycle Bin")
 	fl.BoolVar(&f.includeMedium, "include-medium-risk", false, "also clean items with a medium risk (Gradle, Maven...)")
+	fl.BoolVar(&f.withWSL, "wsl", false, "also clean caches inside WSL distros (starts the distros that are stopped)")
 	fl.BoolVar(&f.asJSON, "json", false, "print the plan and results as JSON")
 
 	return cmd
@@ -95,7 +99,12 @@ func runClean(cmd *cobra.Command, d cleanDeps, f cleanFlags) error {
 		return fmt.Errorf("invalid --older-than: %w", err)
 	}
 
-	scanners, err := filterByCategory(d.scanners(), f.category)
+	all := d.scanners()
+	if f.withWSL && d.wslScanners != nil {
+		all = append(all, d.wslScanners()...)
+	}
+
+	scanners, err := filterByCategory(all, f.category)
 	if err != nil {
 		return err
 	}

@@ -262,3 +262,34 @@ func TestParseAge(t *testing.T) {
 		}
 	}
 }
+
+// wslSpy is a scanner that only runs with --wsl.
+type wslSpy struct{ spyScanner }
+
+func (wslSpy) Name() string { return "wsl-inside" }
+
+func TestWSLScannersOnlyRunWithTheFlag(t *testing.T) {
+	env, c := newCleanEnv(t)
+
+	var got core.ScanOptions
+
+	inside := core.Candidate{
+		Label: "Ubuntu: npm", SizeBytes: 5 << 30, ReclaimBytes: 5 << 30, Regenerable: true, Risk: core.RiskSafe,
+		Action: core.ActionSpec{Type: "run-command", Command: []string{"wsl.exe", "-d", "Ubuntu", "--", "npm", "cache", "clean", "--force"}},
+	}
+
+	d := env.deps(c)
+	d.wslScanners = func() []core.Scanner {
+		return []core.Scanner{wslSpy{spyScanner{got: &got, candidates: []core.Candidate{inside}}}}
+	}
+
+	out, err := runClean0(t, d, "", "--root", env.root)
+	if err != nil || strings.Contains(out, "Ubuntu: npm") {
+		t.Fatalf("without --wsl the distro must not be scanned: %v\n%s", err, out)
+	}
+
+	out, err = runClean0(t, d, "", "--root", env.root, "--wsl")
+	if err != nil || !strings.Contains(out, "Ubuntu: npm") {
+		t.Fatalf("with --wsl the distro must be scanned: %v\n%s", err, out)
+	}
+}

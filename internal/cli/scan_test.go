@@ -247,3 +247,38 @@ func TestScanKeepsGoingWhenOneScannerFails(t *testing.T) {
 		t.Fatalf("expected results and a warning:\n%s", out)
 	}
 }
+
+func TestScanWSLFlagAddsTheWSLScanners(t *testing.T) {
+	var a, b core.ScanOptions
+
+	inside := core.Candidate{Label: "Ubuntu: npm", SizeBytes: 1 << 30, ReclaimBytes: 1 << 30}
+
+	root := &cobra.Command{Use: "devreclaim"}
+	root.AddCommand(newScanCmd(
+		func() []core.Scanner { return []core.Scanner{spyScanner{got: &a}} },
+		func() []core.Scanner {
+			return []core.Scanner{cacheScanner{spyScanner{got: &b, candidates: []core.Candidate{inside}}}}
+		},
+	))
+
+	run := func(args ...string) string {
+		out := &bytes.Buffer{}
+		root.SetOut(out)
+		root.SetErr(&bytes.Buffer{})
+		root.SetArgs(append([]string{"scan"}, args...))
+
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+
+		return out.String()
+	}
+
+	if out := run(); strings.Contains(out, "Ubuntu: npm") {
+		t.Fatalf("WSL must be off by default:\n%s", out)
+	}
+
+	if out := run("--wsl"); !strings.Contains(out, "Ubuntu: npm") {
+		t.Fatalf("--wsl must add the WSL scanners:\n%s", out)
+	}
+}
