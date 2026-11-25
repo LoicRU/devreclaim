@@ -16,9 +16,11 @@ Not released yet. Once `v0.1.0` ships: GitHub Releases, then winget/scoop.
 devreclaim scan
 devreclaim scan --category package-caches
 devreclaim wsl status
+devreclaim clean                 # dry run: shows the plan
+devreclaim clean --apply         # asks, then sends folders to the Recycle Bin
 ```
 
-Read-only for now: `scan` and `wsl status` never delete anything. `clean` comes later.
+`scan` and `wsl status` never delete anything. `clean` does nothing without `--apply`.
 
 ## Safety
 
@@ -26,7 +28,7 @@ Read-only for now: `scan` and `wsl status` never delete anything. `clean` comes 
 - Deletion defaults to the Recycle Bin (`--trash`) until the tool has an established track record.
 - Every deletion is logged. No telemetry, no network calls for scanning or cleaning.
 
-See [`docs/PLAN.md`](docs/PLAN.md) for the full safety model.
+See [`docs/safety.md`](docs/safety.md) for the safeguards and [`docs/PLAN.md`](docs/PLAN.md) for the full plan.
 
 ## Contributing
 
