@@ -18,6 +18,8 @@ devreclaim scan --category package-caches
 devreclaim wsl status
 devreclaim clean                 # dry run: shows the plan
 devreclaim clean --apply         # asks, then sends folders to the Recycle Bin
+devreclaim wsl compact --distro Ubuntu           # dry run
+devreclaim wsl compact --distro Ubuntu --apply   # admin terminal required
 ```
 
 `scan` and `wsl status` never delete anything. `clean` does nothing without `--apply`.

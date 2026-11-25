@@ -29,3 +29,20 @@ Gradle and Maven caches are skipped unless you add `--include-medium-risk`.
 
 Folders sent to the Recycle Bin can be restored from it. Cache commands and `--delete`
 cannot be undone; caches are downloaded again by their tool.
+
+## WSL compaction
+
+`devreclaim wsl compact --distro <name>` is a dry run until you add `--apply`, and `--apply`
+needs a terminal opened as administrator (otherwise it stops with exit code 3; it never
+elevates by itself).
+
+Before anything runs it refuses: Docker Desktop distros, WSL1 distros, sparse virtual disks
+(they already shrink by themselves), and a disk with too little free space.
+
+With `--apply` it asks first, then: `fstrim` in the distro (a failure only warns),
+`wsl --shutdown`, then `Optimize-VHD` (or `diskpart` without Hyper-V, always detaching the
+disk afterwards, even on error). The size is measured before and after. If less than 5 %
+is recovered, the tool says so instead of showing a neutral success.
+
+`wsl --shutdown` stops every WSL distro: save your work first, and consider a backup with
+`wsl --export <name> backup.tar`.
